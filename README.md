@@ -1,1 +1,509 @@
-# Invoice
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Invoice Tracking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDE8D6;
+    --paper-2:#E4DEC8;
+    --card:#F6F2E4;
+    --ink:#1E2A22;
+    --ink-soft:#4B5148;
+    --ink-faint:#8A8A78;
+    --line:#C9C0A6;
+    --line-strong:#AFA487;
+    --red:#A6372B;
+    --red-tint:#F1E0D9;
+    --teal:#2F6E5C;
+    --teal-tint:#DDE9E1;
+    --amber:#B8802E;
+    --amber-tint:#F0E4CD;
+    --shadow: 0 1px 0 rgba(30,42,34,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-2) 1px, transparent 1px);
+    background-size: 100% 42px;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:48px 32px 96px;}
+
+  /* Masthead */
+  .masthead{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px double var(--ink);
+    padding-bottom:18px;margin-bottom:8px;
+  }
+  .masthead h1{
+    font-family:'Fraunces',serif;font-weight:600;font-size:40px;
+    margin:0;letter-spacing:-0.5px;
+  }
+  .masthead .sub{
+    font-size:13px;color:var(--ink-soft);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;
+  }
+  .masthead .date{
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-soft);text-align:right;
+  }
+
+  /* Totals strip */
+  .totals{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    border-bottom:1px solid var(--line-strong);
+    margin-bottom:28px;
+  }
+  .totals .cell{
+    padding:18px 20px;border-right:1px solid var(--line-strong);
+  }
+  .totals .cell:last-child{border-right:none;}
+  .totals .label{
+    font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;
+  }
+  .totals .num{
+    font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;
+  }
+  .totals .num.overdue{color:var(--red);}
+  .totals .num.paid{color:var(--teal);}
+
+  /* Toolbar */
+  .toolbar{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:16px;flex-wrap:wrap;
+  }
+  .tabs{display:flex;gap:4px;}
+  .tab{
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.5px;text-transform:uppercase;
+    padding:8px 14px;border:1px solid var(--line-strong);background:transparent;cursor:pointer;color:var(--ink-soft);
+    border-radius:2px;
+  }
+  .tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  .new-btn{
+    font-family:'Fraunces',serif;font-weight:600;font-size:14px;letter-spacing:0.5px;
+    background:var(--card);border:2px solid var(--red);color:var(--red);
+    padding:10px 20px;cursor:pointer;position:relative;
+    transform:rotate(-1deg);border-radius:3px;
+    transition:transform .12s ease;
+  }
+  .new-btn:hover{transform:rotate(0deg) scale(1.02);}
+
+  /* Table */
+  .ledger{width:100%;border-collapse:collapse;background:var(--card);}
+  .ledger thead th{
+    text-align:left;font-size:11px;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink-faint);
+    font-weight:500;padding:10px 14px;border-bottom:2px solid var(--ink);
+  }
+  .ledger tbody tr{border-bottom:1px solid var(--line);cursor:pointer;}
+  .ledger tbody tr:hover{background:var(--paper-2);}
+  .ledger td{padding:14px 14px;font-size:14px;vertical-align:middle;}
+  .ledger td.num{font-family:'JetBrains Mono',monospace;}
+  .ledger td.vendor{font-weight:500;}
+  .ledger td.due-soon{color:var(--red);}
+
+  .empty{
+    padding:64px 20px;text-align:center;color:var(--ink-faint);font-family:'Fraunces',serif;font-size:18px;
+    background:var(--card);
+  }
+  .empty .arrow{display:block;margin-top:10px;font-size:13px;font-family:'Inter',sans-serif;color:var(--ink-soft);}
+
+  /* Stamp badge */
+  .stamp{
+    display:inline-block;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;
+    letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border:2px solid currentColor;
+    border-radius:3px;transform:rotate(-3deg);
+  }
+  .stamp.pending{color:var(--amber);background:var(--amber-tint);}
+  .stamp.paid{color:var(--teal);background:var(--teal-tint);transform:rotate(2deg);}
+  .stamp.overdue{color:var(--red);background:var(--red-tint);transform:rotate(-2deg);}
+
+  /* Slide-in panel */
+  .overlay{
+    position:fixed;inset:0;background:rgba(30,42,34,0.35);display:none;z-index:40;
+  }
+  .overlay.show{display:block;}
+  .panel{
+    position:fixed;top:0;right:-460px;width:440px;max-width:92vw;height:100vh;background:var(--card);
+    border-left:3px double var(--ink);z-index:41;transition:right .22s ease;overflow-y:auto;
+  }
+  .panel.show{right:0;}
+  .panel-inner{padding:32px 28px 60px;}
+  .panel h2{font-family:'Fraunces',serif;font-size:24px;margin:0 0 4px;}
+  .panel .close{
+    position:absolute;top:24px;right:26px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);
+    font-family:'Inter',sans-serif;
+  }
+  .field{margin-top:18px;}
+  .field label{display:block;font-size:11px;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
+  .field input, .field select, .field textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--line-strong);background:var(--paper);
+    font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);border-radius:2px;
+  }
+  .field textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .dropzone{
+    margin-top:18px;border:2px dashed var(--line-strong);border-radius:4px;padding:22px;text-align:center;
+    font-size:13px;color:var(--ink-soft);cursor:pointer;
+  }
+  .dropzone.drag{border-color:var(--red);color:var(--red);background:var(--red-tint);}
+  .dropzone .fname{font-family:'JetBrains Mono',monospace;font-size:12px;margin-top:6px;color:var(--ink);}
+  .submit-btn{
+    margin-top:24px;width:100%;padding:12px;background:var(--ink);color:var(--paper);border:none;
+    font-family:'Fraunces',serif;font-weight:600;font-size:15px;cursor:pointer;border-radius:3px;
+  }
+  .submit-btn:hover{background:var(--red);}
+  .err{color:var(--red);font-size:12px;margin-top:6px;display:none;}
+
+  /* Detail modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(30,42,34,0.4);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--card);max-width:460px;width:100%;border:1px solid var(--line-strong);border-radius:4px;padding:28px;position:relative;}
+  .modal h3{font-family:'Fraunces',serif;font-size:22px;margin:0 0 2px;}
+  .modal .inv-no{font-family:'JetBrains Mono',monospace;color:var(--ink-faint);font-size:13px;margin-bottom:16px;}
+  .modal .close{position:absolute;top:20px;right:22px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);}
+  .detail-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .detail-row span:first-child{color:var(--ink-faint);}
+  .detail-row span:last-child{font-family:'JetBrains Mono',monospace;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .modal-actions button{
+    flex:1;padding:10px;border-radius:3px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;
+  }
+  .btn-mark{background:var(--teal);color:var(--card);border:none;}
+  .btn-file{background:transparent;border:1px solid var(--line-strong);color:var(--ink);}
+  .btn-del{background:transparent;border:1px solid var(--red);color:var(--red);}
+
+  @media (max-width:640px){
+    .totals{grid-template-columns:repeat(2,1fr);}
+    .totals .cell:nth-child(2){border-right:none;}
+    .wrap{padding:28px 16px 60px;}
+    .masthead h1{font-size:28px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <h1>Ledger</h1>
+      <div class="sub">Invoice uploading &amp; tracking</div>
+    </div>
+    <div class="date" id="today"></div>
+  </div>
+
+  <div class="totals">
+    <div class="cell">
+      <div class="label">Outstanding</div>
+      <div class="num" id="t-outstanding">$0.00</div>
+    </div>
+    <div class="cell">
+      <div class="label">Overdue</div>
+      <div class="num overdue" id="t-overdue">$0.00</div>
+    </div>
+    <div class="cell">
+      <div class="label">Paid</div>
+      <div class="num paid" id="t-paid">$0.00</div>
+    </div>
+    <div class="cell">
+      <div class="label">Entries</div>
+      <div class="num" id="t-count">0</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="pending">Pending</button>
+      <button class="tab" data-filter="overdue">Overdue</button>
+      <button class="tab" data-filter="paid">Paid</button>
+    </div>
+    <button class="new-btn" id="newBtn">+ New entry</button>
+  </div>
+
+  <table class="ledger" id="ledgerTable">
+    <thead>
+      <tr>
+        <th>Vendor</th>
+        <th>Invoice #</th>
+        <th>Issued</th>
+        <th>Due</th>
+        <th style="text-align:right;">Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="ledgerBody"></tbody>
+  </table>
+  <div class="empty" id="emptyState" style="display:none;">
+    No invoices in the ledger yet.
+    <span class="arrow">Upload one with "New entry" above to start tracking.</span>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="panel" id="panel">
+  <div class="panel-inner">
+    <button class="close" id="closePanel">&times;</button>
+    <h2>New entry</h2>
+    <div class="sub" style="font-size:12px;color:var(--ink-faint);">Log an invoice into the ledger</div>
+
+    <div class="field">
+      <label>Vendor / client</label>
+      <input id="f-vendor" type="text" placeholder="Acme Supply Co.">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Invoice number</label>
+        <input id="f-number" type="text" placeholder="INV-1042">
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input id="f-amount" type="number" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Issue date</label>
+        <input id="f-issue" type="date">
+      </div>
+      <div class="field">
+        <label>Due date</label>
+        <input id="f-due" type="date">
+      </div>
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="f-status">
+        <option value="pending">Pending</option>
+        <option value="paid">Paid</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="f-notes" placeholder="Anything worth remembering about this one"></textarea>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <div>Drop a file here, or click to attach</div>
+      <div style="font-size:11px;margin-top:4px;">PDF or image, up to ~3MB</div>
+      <div class="fname" id="fname"></div>
+      <input type="file" id="fileInput" accept=".pdf,image/*" style="display:none;">
+    </div>
+
+    <div class="err" id="formErr"></div>
+    <button class="submit-btn" id="saveBtn">Add to ledger</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+const money = n => '$' + Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate = d => { if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); };
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+document.getElementById('today').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+let invoices = [];
+let currentFilter = 'all';
+let attachedFile = null;
+
+function computeStatus(inv){
+  if(inv.status === 'paid') return 'paid';
+  if(inv.due && inv.due < todayStr()) return 'overdue';
+  return 'pending';
+}
+
+async function loadInvoices(){
+  try{
+    const res = await window.storage.get('invoices', false);
+    invoices = res ? JSON.parse(res.value) : [];
+  }catch(e){
+    invoices = [];
+  }
+  render();
+}
+
+async function saveInvoices(){
+  try{
+    await window.storage.set('invoices', JSON.stringify(invoices), false);
+  }catch(e){
+    console.error('Storage error', e);
+  }
+}
+
+function render(){
+  const body = document.getElementById('ledgerBody');
+  const table = document.getElementById('ledgerTable');
+  const empty = document.getElementById('emptyState');
+  body.innerHTML = '';
+
+  let list = invoices.map(i => ({...i, computed: computeStatus(i)}));
+  if(currentFilter !== 'all') list = list.filter(i => i.computed === currentFilter);
+
+  list.sort((a,b) => {
+    if(a.computed !== 'paid' && b.computed !== 'paid') return (a.due||'').localeCompare(b.due||'');
+    return (b.createdAt||'').localeCompare(a.createdAt||'');
+  });
+
+  if(invoices.length === 0){
+    table.style.display = 'none';
+    empty.style.display = 'block';
+  } else {
+    table.style.display = '';
+    empty.style.display = list.length ? 'none' : 'block';
+    if(!list.length){ empty.querySelector('.arrow') ? null : null; empty.firstChild.textContent = 'Nothing in this view.'; }
+  }
+
+  list.forEach(inv => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="vendor">${escapeHtml(inv.vendor)}</td>
+      <td class="num">${escapeHtml(inv.number)}</td>
+      <td>${fmtDate(inv.issue)}</td>
+      <td class="${inv.computed==='overdue'?'due-soon':''}">${fmtDate(inv.due)}</td>
+      <td class="num" style="text-align:right;">${money(inv.amount)}</td>
+      <td><span class="stamp ${inv.computed}">${inv.computed}</span></td>
+    `;
+    tr.addEventListener('click', () => openDetail(inv.id));
+    body.appendChild(tr);
+  });
+
+  // totals
+  const outstanding = invoices.filter(i=>computeStatus(i)!=='paid').reduce((s,i)=>s+Number(i.amount||0),0);
+  const overdue = invoices.filter(i=>computeStatus(i)==='overdue').reduce((s,i)=>s+Number(i.amount||0),0);
+  const paid = invoices.filter(i=>computeStatus(i)==='paid').reduce((s,i)=>s+Number(i.amount||0),0);
+  document.getElementById('t-outstanding').textContent = money(outstanding);
+  document.getElementById('t-overdue').textContent = money(overdue);
+  document.getElementById('t-paid').textContent = money(paid);
+  document.getElementById('t-count').textContent = invoices.length;
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// Tabs
+document.getElementById('tabs').addEventListener('click', e => {
+  if(e.target.classList.contains('tab')){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    e.target.classList.add('active');
+    currentFilter = e.target.dataset.filter;
+    render();
+  }
+});
+
+// Panel open/close
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+function openPanel(){
+  overlay.classList.add('show'); panel.classList.add('show');
+  document.getElementById('f-issue').value = todayStr();
+}
+function closePanel(){
+  overlay.classList.remove('show'); panel.classList.remove('show');
+  resetForm();
+}
+document.getElementById('newBtn').addEventListener('click', openPanel);
+document.getElementById('closePanel').addEventListener('click', closePanel);
+overlay.addEventListener('click', closePanel);
+
+function resetForm(){
+  ['f-vendor','f-number','f-amount','f-issue','f-due','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-status').value = 'pending';
+  document.getElementById('formErr').style.display='none';
+  attachedFile = null;
+  document.getElementById('fname').textContent = '';
+}
+
+// File attach
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=>fileInput.click());
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev, e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev, e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop', e=>{
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{
+  if(e.target.files.length) handleFile(e.target.files[0]);
+});
+function handleFile(file){
+  if(file.size > 3.2*1024*1024){
+    document.getElementById('fname').textContent = 'File too large (max ~3MB) — name kept, content not attached.';
+    attachedFile = {name:file.name, data:null};
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    attachedFile = {name:file.name, data:reader.result};
+    document.getElementById('fname').textContent = 'Attached: ' + file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Save
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const vendor = document.getElementById('f-vendor').value.trim();
+  const number = document.getElementById('f-number').value.trim();
+  const amount = document.getElementById('f-amount').value;
+  const issue = document.getElementById('f-issue').value;
+  const due = document.getElementById('f-due').value;
+  const status = document.getElementById('f-status').value;
+  const notes = document.getElementById('f-notes').value.trim();
+  const err = document.getElementById('formErr');
+
+  if(!vendor || !number || !amount || !due){
+    err.textContent = 'Vendor, invoice number, amount, and due date are required.';
+    err.style.display = 'block';
+    return;
+  }
+
+  const inv = {
+    id: 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    vendor, number, amount: Number(amount), issue, due, status, notes,
+    file: attachedFile,
+    createdAt: new Date().toISOString()
+  };
+  invoices.push(inv);
+  await saveInvoices();
+  render();
+  closePanel();
+});
+
+// Detail modal
+const modalBg = document.getElementById('modalBg');
+const modalContent = document.getElementById('modalContent');
+function openDetail(id){
+  const inv = invoices.find(i=>i.id===id);
+  if(!inv) return;
+  const status = computeStatus(inv);
+  modalContent.innerHTML = `
+    <button class="close" id="modalClose">&times;</button>
+    <h3>${escapeHtml(inv.vendor)}</h3>
+    <div class="inv-no">${escapeHtml(inv.number)}</div>
+    <div style="margin-bottom:14px;"><span class="stamp ${status}">${status}</span></div>
+    <div class="detail-row"><span>Amount</span><span>${money(inv.amount)}</span></div>
+    <div class="detail-row"><span>Issued</span><span>${fmtDate(inv.issue)}</span></div>
+    <div class="detail-row"><span>Due</span><span>${fmtDate(inv.due)}</span></div>
+    ${inv.notes ? `<div class="detail-row" style="align-items:flex-start;"><span>Notes</span><span style="font-family:'Inter',sans-serif;text-align:right;max-width:260px;">${escapeHtml(inv.notes)}</span></div>` : ''}
+    ${inv.file && inv.file.name ? `<div class="detail-row"><span>File</span><span style="font-family:'Inter',sans-serif;">${escapeHtml(inv.file.name)}</span></div>` : ''}
+    <div class="modal-actions">
+      <button class="btn-mark" id="markBtn">${status==='paid' ? 'Mark pending' : 'Mark paid'}</button>
+      ${inv.file && inv.file.data ? '<button class="btn-file" id="viewFileBtn">View file</button>' : ''}
+      <button class="btn-del" id="delBtn">Delete</button>
+    </div>
+  `;
+  modalBg.classList.add('show');
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('m
